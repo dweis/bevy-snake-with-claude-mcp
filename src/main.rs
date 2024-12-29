@@ -7,11 +7,17 @@ use bevy::{
 use std::collections::VecDeque;
 
 mod snake;
-use snake::{components::*, resources::*};
+mod ui;
+use snake::{
+    Direction, Position, SnakeHead, SnakeSegment,
+    FoodSpawnTimer, GridSize, LastTailPosition, Score, SnakeSegments, MovementTimer,
+    food_collection, food_spawning, snake_movement, snake_movement_input
+};
+use ui::UiPlugin;
 
-const WINDOW_WIDTH: f32 = 800.0;
-const WINDOW_HEIGHT: f32 = 800.0;
-const GRID_SIZE: u32 = 20;
+pub const WINDOW_WIDTH: f32 = 800.0;
+pub const WINDOW_HEIGHT: f32 = 800.0;
+pub const GRID_SIZE: u32 = 20;
 
 // Game States
 #[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
@@ -40,14 +46,25 @@ fn main() {
         .init_resource::<LastTailPosition>()
         .init_resource::<Score>()
         .init_resource::<GridSize>()
+        .init_resource::<MovementTimer>()
+        .init_resource::<FoodSpawnTimer>()
         .insert_state(GameState::Playing)
+        .add_plugins(UiPlugin)
         .add_systems(PreStartup, setup)
         .add_systems(Startup, spawn_snake)
-        .add_systems(Update, check_for_exit)
+        .add_systems(
+            Update,
+            (
+                snake_movement_input.run_if(in_state(GameState::Playing)),
+                snake_movement.run_if(in_state(GameState::Playing)),
+                food_spawning.run_if(in_state(GameState::Playing)),
+                food_collection.run_if(in_state(GameState::Playing)),
+                check_for_exit,
+            ),
+        )
         .run();
 }
 
-// Handle ESC key to exit the game
 fn check_for_exit(
     keyboard_input: ResMut<ButtonInput<KeyCode>>,
     mut exit: EventWriter<AppExit>,
@@ -58,24 +75,34 @@ fn check_for_exit(
 }
 
 fn setup(mut commands: Commands) {
-    // Spawn camera
-    commands.spawn(Camera2d::default());
+    // Spawn camera with individual components
+    commands.spawn((
+        Camera2d,
+        Transform::default(),
+        GlobalTransform::default(),
+        Visibility::default(),
+    ));
 }
 
 fn spawn_snake(mut commands: Commands, mut segments: ResMut<SnakeSegments>) {
     *segments = SnakeSegments(VecDeque::new());
 
-    // Spawn snake head
+    // Spawn snake head at Z=2 to be above everything
     segments.0.push_front(
         commands
             .spawn((
+                // Sprite component
                 Sprite {
-                    color: Color::rgb(0.7, 0.7, 0.7),
+                    color: Color::srgb(0.7, 0.7, 0.7),
                     custom_size: Some(Vec2::new(0.8 * WINDOW_WIDTH / GRID_SIZE as f32,
                                               0.8 * WINDOW_HEIGHT / GRID_SIZE as f32)),
                     ..default()
                 },
-                Transform::from_xyz(0.0, 0.0, 1.0),
+                // Transform and visibility components
+                Transform::from_xyz(0.0, 0.0, 2.0),
+                GlobalTransform::default(),
+                Visibility::default(),
+                // Game components
                 SnakeHead {
                     direction: Direction::Up,
                 },
@@ -86,17 +113,22 @@ fn spawn_snake(mut commands: Commands, mut segments: ResMut<SnakeSegments>) {
             .id(),
     );
 
-    // Spawn initial snake segment
+    // Spawn initial snake segment at Z=1 to be above food but below head
     segments.0.push_back(
         commands
             .spawn((
+                // Sprite component
                 Sprite {
-                    color: Color::rgb(0.3, 0.3, 0.3),
+                    color: Color::srgb(0.3, 0.3, 0.3),
                     custom_size: Some(Vec2::new(0.8 * WINDOW_WIDTH / GRID_SIZE as f32,
                                               0.8 * WINDOW_HEIGHT / GRID_SIZE as f32)),
                     ..default()
                 },
-                Transform::from_xyz(0.0, -1.0, 0.0),
+                // Transform and visibility components
+                Transform::from_xyz(0.0, -1.0, 1.0),
+                GlobalTransform::default(),
+                Visibility::default(),
+                // Game components
                 SnakeSegment,
                 Position { x: 3, y: 2 },
                 Name::new("Snake Segment"),

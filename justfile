@@ -9,6 +9,10 @@ fmt:
 run *ARGS:
     cargo run {{ARGS}}
 
-# Run 'cargo watch' to run the project (auto-recompiles)
+# Run 'cargo watch' to run the project (auto-recompiles)  
 watch *ARGS:
     cargo watch -x "run -- {{ARGS}}"
+
+# Add a dependency to the project
+add DEP:
+    cargo add {{DEP}}

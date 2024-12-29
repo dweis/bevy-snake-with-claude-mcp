@@ -19,6 +19,15 @@ pub struct Score {
 #[derive(Resource, Default)]
 pub struct LastTailPosition(pub Option<Position>);
 
+#[derive(Resource)]
+pub struct FoodSpawnTimer(pub Timer);
+
+impl Default for FoodSpawnTimer {
+    fn default() -> Self {
+        Self(Timer::from_seconds(3.0, TimerMode::Repeating))
+    }
+}
+
 impl Default for SnakeSegments {
     fn default() -> Self {
         Self(VecDeque::new())
